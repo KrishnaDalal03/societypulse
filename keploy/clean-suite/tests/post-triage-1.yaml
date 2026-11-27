@@ -110,6 +110,7 @@ spec:
       body.tickets.created_at: []
       body.tickets.sla_due_at: []
       header.Date: []
+      header.Server: []
   created: 1795799792
   app_port: 5000
 curl: |-

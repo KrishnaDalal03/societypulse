@@ -1,1 +1,5 @@
-__pycache__/*.pyc.envkeploy/**/mocks.yamlkeploy_archive_*/
+__pycache__/
+*.pyc
+.env
+keploy_archive_*/
+keploy/reports/
