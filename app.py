@@ -532,19 +532,36 @@ MOBILE_UI = """<!doctype html>
         </button>
       </div>
       <form id="triageForm">
-        <label>Resident / Sender</label>
-        <input name="sender" id="triageSender" placeholder="e.g., +919820112233 or Aarav Sharma" required />
-        <label>Channel</label>
-        <select name="channel" id="triageChannel">
-          <option value="whatsapp">whatsapp</option>
-          <option value="app">app</option>
-          <option value="sms">sms</option>
+        <label>Your Name</label>
+        <input name="sender" id="triageSender" placeholder="e.g., Aarav Sharma" required />
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+          <div>
+            <label>Wing</label>
+            <select id="triageWing" required></select>
+          </div>
+          <div>
+            <label>Flat No.</label>
+            <input id="triageFlat" placeholder="e.g., 402" required />
+          </div>
+        </div>
+
+        <label>Select Issue</label>
+        <select id="triageIssueType">
+          <option value="Water Supply">Water Supply</option>
+          <option value="Power / Lift">Power / Lift</option>
+          <option value="Plumbing / Leakage">Plumbing / Leakage</option>
+          <option value="Security / Gate">Security / Gate</option>
+          <option value="Parking / Common Area">Parking / Common Area</option>
+          <option value="Other">Other</option>
         </select>
-        <label>Message</label>
-        <textarea name="message" id="triageMessage" placeholder="Describe the issue (wing, flat, urgency)..." required></textarea>
+
+        <label>Description</label>
+        <textarea id="triageMessage" placeholder="Describe the issue clearly..." required></textarea>
+
         <div class="modal-actions">
           <button type="button" class="btn-surface" onclick="closeModal('triageModal')">Cancel</button>
-          <button type="submit" class="btn-primary" id="triageSubmitBtn">Submit Triage</button>
+          <button type="submit" class="btn-primary" id="triageSubmitBtn">Submit Report</button>
         </div>
       </form>
     </div>
@@ -660,9 +677,24 @@ MOBILE_UI = """<!doctype html>
     function openModal(id) { document.getElementById(id).classList.add("open"); }
     function closeModal(id) { document.getElementById(id).classList.remove("open"); }
 
-    function openTriage(prefillSender = "") {
+    function populateTriageWings(preferredWing = "") {
+      const sel = document.getElementById("triageWing");
+      const wings = getWings(appState || {}).filter(w => w !== "all");
+      const list = wings.length ? wings : ["A", "B", "C"];
+      sel.innerHTML = list.map(w => `<option value="${esc(w)}">Wing ${esc(w)}</option>`).join("");
+      if (preferredWing && list.includes(preferredWing)) {
+        sel.value = preferredWing;
+      } else if (selectedWing !== "all" && list.includes(selectedWing)) {
+        sel.value = selectedWing;
+      }
+    }
+
+    function openTriage(prefillSender = "", prefillWing = "", prefillFlat = "") {
       document.getElementById("triageSender").value = prefillSender || "";
+      document.getElementById("triageFlat").value = prefillFlat || "";
+      document.getElementById("triageIssueType").value = "Water Supply";
       document.getElementById("triageMessage").value = "";
+      populateTriageWings(prefillWing);
       openModal("triageModal");
     }
 
@@ -822,7 +854,7 @@ MOBILE_UI = """<!doctype html>
               <div class="item-head">${esc(r.name || label)}</div>
               <div class="item-sub">${r.wing ? `Wing ${esc(r.wing)}` : ""} ${r.flat ? `· Flat ${esc(r.flat)}` : ""} ${r.phone ? `· ${esc(r.phone)}` : ""}</div>
             </div>
-            <button type="button" class="btn-surface btn-sm" onclick="openTriage('${esc(label)}')">Test</button>
+            <button type="button" class="btn-surface btn-sm" onclick="openTriage('${esc(r.name || label)}', '${esc(r.wing || "")}', '${esc(r.flat || "")}')">Test</button>
           </div>
         `;
       }).join("");
@@ -923,13 +955,23 @@ MOBILE_UI = """<!doctype html>
       const btn = document.getElementById("triageSubmitBtn");
       btn.disabled = true;
       try {
+        const sender = document.getElementById("triageSender").value.trim();
+        const wing = document.getElementById("triageWing").value;
+        const flat = document.getElementById("triageFlat").value.trim();
+        const issueType = document.getElementById("triageIssueType").value;
+        const desc = document.getElementById("triageMessage").value.trim();
+        const formattedMsg = `[Wing ${wing}, Flat ${flat}] [${issueType}] ${desc}`;
+
         const r = await fetch("/triage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            sender: document.getElementById("triageSender").value.trim(),
-            channel: document.getElementById("triageChannel").value,
-            message: document.getElementById("triageMessage").value.trim()
+            sender,
+            channel: "app",
+            wing,
+            flat,
+            issue_type: issueType,
+            message: formattedMsg
           })
         });
         const data = await r.json();
@@ -958,6 +1000,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
