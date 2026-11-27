@@ -260,14 +260,23 @@ MOBILE_UI = """<!doctype html>
       border: 1px solid var(--primary);
       border-radius: 14px;
       padding: 14px 16px;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
+      flex-direction: column;
       gap: 12px;
     }
     .admin-bar.show { display: flex; }
+    .admin-top-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
     .admin-wing-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .admin-wing-form input { width: 170px; margin: 0; }
+    .admin-wing-form input { width: 160px; margin: 0; }
+    .admin-res-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid var(--outline-variant);
+    }
+    @media (max-width: 900px) { .admin-res-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 480px) { .admin-res-grid { grid-template-columns: 1fr; } }
+    .admin-res-grid input, .admin-res-grid select { margin: 0; }
 
     .stats-grid {
       display: grid;
@@ -339,6 +348,8 @@ MOBILE_UI = """<!doctype html>
     .chip-med { background: var(--warning-container); color: var(--on-warning-container); }
     .chip-low { background: var(--success-container); color: var(--on-success-container); }
     .chip-info { background: var(--primary-container); color: var(--on-primary-container); }
+    .chip-owner { background: var(--success-container); color: var(--on-success-container); }
+    .chip-tenant { background: var(--warning-container); color: var(--on-warning-container); }
 
     .tabs {
       display: flex; gap: 6px;
@@ -359,7 +370,7 @@ MOBILE_UI = """<!doctype html>
       padding: 11px 12px;
       margin-bottom: 8px;
     }
-    .item-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
+    .item-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; flex-wrap: wrap; }
     .item-sub { font-size: 12px; color: var(--on-surface-variant); margin-top: 4px; }
     .item-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
@@ -435,19 +446,35 @@ MOBILE_UI = """<!doctype html>
 
   <main>
     <div class="admin-bar" id="adminBar">
-      <div>
-        <strong>Admin Mode Active</strong>
-        <span class="item-sub" style="margin-left:8px;">Add wings, resolve issues, reply, or merge tickets/incidents.</span>
+      <div class="admin-top-row">
+        <div>
+          <strong>Admin Mode Active</strong>
+          <span class="item-sub" style="margin-left:8px;">Manage wings &amp; wing/floor-wise residents (Owner / Tenant).</span>
+        </div>
+        <div class="admin-wing-form">
+          <input id="newWingInput" placeholder="New wing (e.g. A, E)" />
+          <button type="button" class="btn-primary btn-sm" onclick="addWing()">
+            <span class="material-symbols-outlined">add</span> Add Wing
+          </button>
+          <button type="button" class="btn-danger btn-sm" onclick="resetState()">
+            <span class="material-symbols-outlined">restart_alt</span> Reset Demo
+          </button>
+          <button type="button" class="btn-surface btn-sm" onclick="logoutAdmin()">Logout</button>
+        </div>
       </div>
-      <div class="admin-wing-form">
-        <input id="newWingInput" placeholder="New wing (e.g. A, E)" />
-        <button type="button" class="btn-primary btn-sm" onclick="addWing()">
-          <span class="material-symbols-outlined">add</span> Add Wing
+
+      <div class="admin-res-grid">
+        <input id="resNameInput" placeholder="Resident Name" />
+        <select id="resWingInput"></select>
+        <input id="resFloorInput" placeholder="Floor (e.g. 4)" />
+        <input id="resFlatInput" placeholder="Flat (e.g. 402)" />
+        <select id="resRoleInput">
+          <option value="Owner">Owner</option>
+          <option value="Tenant">Tenant</option>
+        </select>
+        <button type="button" class="btn-primary btn-sm" onclick="addResident()">
+          <span class="material-symbols-outlined">person_add</span> Add Resident
         </button>
-        <button type="button" class="btn-danger btn-sm" onclick="resetState()">
-          <span class="material-symbols-outlined">restart_alt</span> Reset Demo
-        </button>
-        <button type="button" class="btn-surface btn-sm" onclick="logoutAdmin()">Logout</button>
       </div>
     </div>
 
@@ -531,7 +558,7 @@ MOBILE_UI = """<!doctype html>
     </div>
   </div>
 
-  <!-- Triage Modal -->
+  <!-- Triage Modal: Choose Wing -> Floor -> Name from Dropdown -->
   <div class="modal-backdrop" id="triageModal">
     <div class="modal">
       <div class="modal-head">
@@ -541,18 +568,21 @@ MOBILE_UI = """<!doctype html>
         </button>
       </div>
       <form id="triageForm">
-        <label>Your Name</label>
-        <input id="triageSender" placeholder="e.g., Aarav Sharma" required />
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div>
-            <label>Wing</label>
-            <select id="triageWing" required></select>
+            <label>1. Choose Wing</label>
+            <select id="triageWing" onchange="onTriageWingChange()" required></select>
           </div>
           <div>
-            <label>Flat No.</label>
-            <input id="triageFlat" placeholder="e.g., 402" required />
+            <label>2. Choose Floor</label>
+            <select id="triageFloor" onchange="onTriageFloorChange()" required></select>
           </div>
         </div>
+
+        <label>3. Choose Your Name</label>
+        <select id="triageNameSelect" onchange="onTriageNameChange()" required></select>
+        <div class="item-sub" id="selectedResidentMeta" style="margin-top:6px;"></div>
+
         <label>Select Issue</label>
         <select id="triageIssueType">
           <option value="Water Supply">Water Supply</option>
@@ -562,8 +592,10 @@ MOBILE_UI = """<!doctype html>
           <option value="Parking / Common Area">Parking / Common Area</option>
           <option value="Other">Other</option>
         </select>
+
         <label>Description</label>
         <textarea id="triageMessage" placeholder="Describe the issue clearly..." required></textarea>
+
         <div class="modal-actions">
           <button type="button" class="btn-surface" onclick="closeModal('triageModal')">Cancel</button>
           <button type="submit" class="btn-primary" id="triageSubmitBtn">Submit Report</button>
@@ -638,11 +670,20 @@ MOBILE_UI = """<!doctype html>
 
   <script>
     const ADMIN_PASSCODE = "admin123";
+    const DEFAULT_RESIDENTS = [
+      { id: "res_1", name: "Aarav Sharma", wing: "B", floor: "4", flat: "402", role: "Owner" },
+      { id: "res_2", name: "Priya Nair", wing: "B", floor: "4", flat: "404", role: "Tenant" },
+      { id: "res_3", name: "Rohan Verma", wing: "C", floor: "2", flat: "201", role: "Owner" },
+      { id: "res_4", name: "Meera Kulkarni", wing: "D", floor: "6", flat: "603", role: "Tenant" }
+    ];
+
     let appState = null;
     let selectedWing = "all";
     let customWings = JSON.parse(localStorage.getItem("sp_custom_wings") || "[]");
+    let extraResidents = JSON.parse(localStorage.getItem("sp_extra_residents") || "[]");
     let adminReplies = JSON.parse(localStorage.getItem("sp_admin_replies") || "{}");
     let mergedRecords = JSON.parse(localStorage.getItem("sp_merged_records") || '{"merged_incident_ids":[],"merged_ticket_ids":[]}');
+    let autoClusteredIncidents = JSON.parse(localStorage.getItem("sp_auto_incidents") || "[]");
     let isAdmin = localStorage.getItem("sp_is_admin") === "1";
     let showResolved = false;
     let activeTab = "logs";
@@ -650,8 +691,11 @@ MOBILE_UI = """<!doctype html>
     let mergingTicketId = null;
 
     function persistMeta() {
+      localStorage.setItem("sp_custom_wings", JSON.stringify(customWings));
+      localStorage.setItem("sp_extra_residents", JSON.stringify(extraResidents));
       localStorage.setItem("sp_admin_replies", JSON.stringify(adminReplies));
       localStorage.setItem("sp_merged_records", JSON.stringify(mergedRecords));
+      localStorage.setItem("sp_auto_incidents", JSON.stringify(autoClusteredIncidents));
     }
 
     function applyTheme(theme) {
@@ -675,6 +719,7 @@ MOBILE_UI = """<!doctype html>
         btn.className = "btn-success";
         label.textContent = "Admin Active";
         bar.classList.add("show");
+        populateAdminWingSelect();
       } else {
         btn.className = "btn-surface";
         label.textContent = "Admin Login";
@@ -686,6 +731,7 @@ MOBILE_UI = """<!doctype html>
     function handleAdminClick() {
       if (isAdmin) {
         document.getElementById("adminBar").classList.toggle("show");
+        populateAdminWingSelect();
       } else {
         document.getElementById("adminPass").value = "";
         openModal("adminModal");
@@ -698,6 +744,32 @@ MOBILE_UI = """<!doctype html>
       syncAdminUI();
     }
 
+    function getAllResidents() {
+      const backendRes = (appState?.residents || []).map((r, idx) => ({
+        id: r.id || ("bk_res_" + idx),
+        name: r.name || r.phone || ("Resident " + (idx + 1)),
+        wing: String(r.wing || "B"),
+        floor: String(r.floor || (r.flat ? String(r.flat)[0] : "1")),
+        flat: String(r.flat || ""),
+        role: (r.role || r.occupancy || "Owner").toLowerCase().includes("tenant") ? "Tenant" : "Owner"
+      }));
+      const combined = [...backendRes, ...DEFAULT_RESIDENTS, ...extraResidents];
+      const seen = new Set();
+      return combined.filter(r => {
+        const key = `${(r.name || "").toLowerCase()}|${r.wing}|${r.floor}|${r.flat}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function populateAdminWingSelect() {
+      const sel = document.getElementById("resWingInput");
+      const wings = getWings(appState || {}).filter(w => w !== "all");
+      const list = wings.length ? wings : ["B", "C", "D"];
+      sel.innerHTML = list.map(w => `<option value="${esc(w)}">Wing ${esc(w)}</option>`).join("");
+    }
+
     function addWing() {
       if (!isAdmin) return;
       clearErr();
@@ -706,10 +778,38 @@ MOBILE_UI = """<!doctype html>
       if (!val) return;
       if (!customWings.includes(val)) {
         customWings.push(val);
-        localStorage.setItem("sp_custom_wings", JSON.stringify(customWings));
+        persistMeta();
       }
       selectedWing = val;
       inp.value = "";
+      populateAdminWingSelect();
+      renderAll();
+    }
+
+    function addResident() {
+      if (!isAdmin) return;
+      clearErr();
+      const name = document.getElementById("resNameInput").value.trim();
+      const wing = document.getElementById("resWingInput").value;
+      const floor = document.getElementById("resFloorInput").value.trim();
+      const flat = document.getElementById("resFlatInput").value.trim();
+      const role = document.getElementById("resRoleInput").value;
+      if (!name || !floor) {
+        showErr("Please enter Resident Name and Floor.");
+        return;
+      }
+      extraResidents.push({
+        id: "res_" + Date.now().toString().slice(-6),
+        name,
+        wing,
+        floor,
+        flat,
+        role
+      });
+      persistMeta();
+      document.getElementById("resNameInput").value = "";
+      document.getElementById("resFloorInput").value = "";
+      document.getElementById("resFlatInput").value = "";
       renderAll();
     }
 
@@ -733,19 +833,66 @@ MOBILE_UI = """<!doctype html>
 
     function populateTriageWings(preferredWing = "") {
       const sel = document.getElementById("triageWing");
-      const wings = getWings(appState || {}).filter(w => w !== "all");
-      const list = wings.length ? wings : ["A", "B", "C"];
-      sel.innerHTML = list.map(w => `<option value="${esc(w)}">Wing ${esc(w)}</option>`).join("");
-      if (preferredWing && list.includes(preferredWing)) sel.value = preferredWing;
-      else if (selectedWing !== "all" && list.includes(selectedWing)) sel.value = selectedWing;
+      const resWings = getAllResidents().map(r => r.wing).filter(Boolean);
+      const stateWings = getWings(appState || {}).filter(w => w !== "all");
+      const list = Array.from(new Set([...stateWings, ...resWings]));
+      const finalList = list.length ? list : ["B", "C", "D"];
+      sel.innerHTML = finalList.map(w => `<option value="${esc(w)}">Wing ${esc(w)}</option>`).join("");
+      if (preferredWing && finalList.includes(preferredWing)) sel.value = preferredWing;
+      else if (selectedWing !== "all" && finalList.includes(selectedWing)) sel.value = selectedWing;
     }
 
-    function openTriage(prefillSender = "", prefillWing = "", prefillFlat = "") {
-      document.getElementById("triageSender").value = prefillSender || "";
-      document.getElementById("triageFlat").value = prefillFlat || "";
+    function onTriageWingChange(preferredFloor = "", preferredName = "") {
+      const wing = document.getElementById("triageWing").value;
+      const floorSel = document.getElementById("triageFloor");
+      const wingResidents = getAllResidents().filter(r => r.wing === wing);
+      const floors = Array.from(new Set(wingResidents.map(r => r.floor).filter(Boolean)));
+      if (!floors.length) {
+        floorSel.innerHTML = `<option value="">No floors added for Wing ${esc(wing)}</option>`;
+      } else {
+        floorSel.innerHTML = floors.map(f => `<option value="${esc(f)}">Floor ${esc(f)}</option>`).join("");
+        if (preferredFloor && floors.includes(preferredFloor)) floorSel.value = preferredFloor;
+      }
+      onTriageFloorChange(preferredName);
+    }
+
+    function onTriageFloorChange(preferredName = "") {
+      const wing = document.getElementById("triageWing").value;
+      const floor = document.getElementById("triageFloor").value;
+      const nameSel = document.getElementById("triageNameSelect");
+      const matches = getAllResidents().filter(r => r.wing === wing && (!floor || r.floor === floor));
+      if (!matches.length) {
+        nameSel.innerHTML = `<option value="">No residents on this floor</option>`;
+      } else {
+        nameSel.innerHTML = matches.map(r =>
+          `<option value="${esc(r.name)}" data-flat="${esc(r.flat || "")}" data-role="${esc(r.role || "Owner")}">${esc(r.name)} (${esc(r.role || "Owner")})</option>`
+        ).join("");
+        if (preferredName) {
+          const found = Array.from(nameSel.options).find(o => o.value === preferredName);
+          if (found) nameSel.value = preferredName;
+        }
+      }
+      onTriageNameChange();
+    }
+
+    function onTriageNameChange() {
+      const sel = document.getElementById("triageNameSelect");
+      const opt = sel.options[sel.selectedIndex];
+      const metaEl = document.getElementById("selectedResidentMeta");
+      if (!opt || !opt.value) {
+        metaEl.textContent = "Add a resident for this Wing & Floor in Admin Mode to select from list.";
+        return;
+      }
+      const flat = opt.dataset.flat || "";
+      const role = opt.dataset.role || "Owner";
+      metaEl.innerHTML = `${flat ? `Flat <strong>${esc(flat)}</strong> · ` : ""}Status: <strong>${esc(role)}</strong>`;
+    }
+
+    function openTriage(prefillName = "", prefillWing = "", prefillFloor = "") {
       document.getElementById("triageIssueType").value = "Water Supply";
       document.getElementById("triageMessage").value = "";
       populateTriageWings(prefillWing);
+      onTriageWingChange(prefillFloor, prefillName);
       openModal("triageModal");
     }
 
@@ -762,9 +909,9 @@ MOBILE_UI = """<!doctype html>
 
     function getWings(st) {
       const s = new Set(["all", ...customWings]);
+      for (const r of getAllResidents()) if (r.wing) s.add(String(r.wing));
       for (const x of (st.master_incidents || [])) if (x.wing) s.add(String(x.wing));
       for (const x of (st.tickets || [])) if (x.wing) s.add(String(x.wing));
-      for (const x of (st.residents || [])) if (x.wing) s.add(String(x.wing));
       return Array.from(s);
     }
 
@@ -774,11 +921,43 @@ MOBILE_UI = """<!doctype html>
     }
 
     function getIncidents() {
-      return (appState?.master_incidents || []).filter(i => !mergedRecords.merged_incident_ids.includes(i.id || i.incident_id));
+      const combined = [...(appState?.master_incidents || []), ...autoClusteredIncidents];
+      return combined.filter(i => !mergedRecords.merged_incident_ids.includes(i.id || i.incident_id));
     }
 
     function getTickets() {
       return (appState?.tickets || []).filter(t => !mergedRecords.merged_ticket_ids.includes(t.id || t.ticket_id));
+    }
+
+    function ensureAutoCluster(wing, issueType, desc, flat) {
+      const existing = getIncidents().find(i =>
+        (i.status || "active") === "active" &&
+        String(i.wing || "") === String(wing) &&
+        String(i.issue_type || i.title || "").toLowerCase().includes(issueType.toLowerCase())
+      );
+      if (existing) {
+        const flats = new Set(existing.affected_flats || []);
+        if (flat) flats.add(String(flat));
+        existing.affected_flats = Array.from(flats);
+        if (desc && !(existing.summary || "").includes(desc)) {
+          existing.summary = [existing.summary, desc].filter(Boolean).join(" · ");
+        }
+        persistMeta();
+        return existing;
+      }
+      const created = {
+        id: "inc_" + Date.now().toString().slice(-5),
+        title: `Wing ${wing} — ${issueType}`,
+        issue_type: issueType,
+        status: "active",
+        severity: issueType.toLowerCase().includes("water") || issueType.toLowerCase().includes("power") ? "HIGH" : "MEDIUM",
+        wing,
+        affected_flats: flat ? [String(flat)] : [],
+        summary: desc
+      };
+      autoClusteredIncidents.push(created);
+      persistMeta();
+      return created;
     }
 
     function renderWings() {
@@ -829,7 +1008,7 @@ MOBILE_UI = """<!doctype html>
       const container = document.getElementById("incidentsList");
 
       if (!list.length) {
-        container.innerHTML = `<div class="empty">No master incidents yet. Sign in as Admin to merge tickets into an incident or create one, or submit a triage report.</div>`;
+        container.innerHTML = `<div class="empty">No master incidents yet. Submit a triage report or merge tickets as Admin.</div>`;
         return;
       }
 
@@ -903,7 +1082,7 @@ MOBILE_UI = """<!doctype html>
                 <span class="chip">${esc(t.status || "open")}</span>
               </div>
               <div class="item-sub">
-                ${t.wing ? `Wing ${esc(t.wing)} · ` : ""}${t.sender ? `From ${esc(t.sender)}` : ""}
+                ${t.wing ? `Wing ${esc(t.wing)} · ` : ""}${t.floor ? `Floor ${esc(t.floor)} · ` : ""}${t.sender ? `From ${esc(t.sender)}` : ""}
               </div>
               ${reply ? `<div class="inc-reply-box"><strong>Admin Reply:</strong> ${esc(reply)}</div>` : ""}
               ${isAdmin ? `
@@ -918,20 +1097,25 @@ MOBILE_UI = """<!doctype html>
         return;
       }
 
-      const residents = (st.residents || []).filter(matchesWing);
+      const residents = getAllResidents().filter(matchesWing);
       if (!residents.length) {
-        box.innerHTML = `<div class="empty">No residents in this wing.</div>`;
+        box.innerHTML = `<div class="empty">No residents in this wing. Add residents in Admin Mode.</div>`;
         return;
       }
       box.innerHTML = residents.map(r => {
-        const label = r.phone || r.name || r.id || "";
+        const roleBadge = (r.role || "Owner") === "Tenant" ? "chip chip-tenant" : "chip chip-owner";
         return `
           <div class="item-row" style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
             <div>
-              <div class="item-head">${esc(r.name || label)}</div>
-              <div class="item-sub">${r.wing ? `Wing ${esc(r.wing)}` : ""} ${r.flat ? `· Flat ${esc(r.flat)}` : ""} ${r.phone ? `· ${esc(r.phone)}` : ""}</div>
+              <div class="item-head">
+                <span>${esc(r.name)}</span>
+                <span class="${roleBadge}">${esc(r.role || "Owner")}</span>
+              </div>
+              <div class="item-sub">
+                Wing ${esc(r.wing || "-")} · Floor ${esc(r.floor || "-")}${r.flat ? ` · Flat ${esc(r.flat)}` : ""}
+              </div>
             </div>
-            <button type="button" class="btn-surface btn-sm" onclick="openTriage('${esc(r.name || label)}', '${esc(r.wing || "")}', '${esc(r.flat || "")}')">Test</button>
+            <button type="button" class="btn-surface btn-sm" onclick="openTriage('${esc(r.name)}', '${esc(r.wing || "")}', '${esc(r.floor || "")}')">Complain</button>
           </div>
         `;
       }).join("");
@@ -967,6 +1151,12 @@ MOBILE_UI = """<!doctype html>
     }
 
     async function patchIncidentBackend(id, payload) {
+      const autoInc = autoClusteredIncidents.find(i => (i.id || i.incident_id) === id);
+      if (autoInc) {
+        Object.assign(autoInc, payload);
+        persistMeta();
+        return;
+      }
       const r = await fetch(`/incidents/${encodeURIComponent(id)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -1080,9 +1270,8 @@ MOBILE_UI = """<!doctype html>
           const note = tkt?.summary || tkt?.message || mergingTicketId;
           const summary = [tgt?.summary, `Merged ticket ${mergingTicketId}: ${note}`].filter(Boolean).join(" | ");
           await patchIncidentBackend(targetId, { affected_flats: flats, summary });
-        } else if (newTitle && appState) {
-          appState.master_incidents = appState.master_incidents || [];
-          appState.master_incidents.push({
+        } else if (newTitle) {
+          autoClusteredIncidents.push({
             id: "inc_" + Date.now().toString().slice(-5),
             title: newTitle,
             status: "active",
@@ -1135,6 +1324,7 @@ MOBILE_UI = """<!doctype html>
         appState = data.state || data;
         adminReplies = {};
         mergedRecords = { merged_incident_ids: [], merged_ticket_ids: [] };
+        autoClusteredIncidents = [];
         persistMeta();
         renderAll();
       } catch (e) {
@@ -1162,11 +1352,19 @@ MOBILE_UI = """<!doctype html>
       const btn = document.getElementById("triageSubmitBtn");
       btn.disabled = true;
       try {
-        const sender = document.getElementById("triageSender").value.trim();
         const wing = document.getElementById("triageWing").value;
-        const flat = document.getElementById("triageFlat").value.trim();
+        const floor = document.getElementById("triageFloor").value;
+        const nameSel = document.getElementById("triageNameSelect");
+        const sender = nameSel.value.trim();
+        const flat = nameSel.options[nameSel.selectedIndex]?.dataset.flat || "";
+        const role = nameSel.options[nameSel.selectedIndex]?.dataset.role || "Owner";
         const issueType = document.getElementById("triageIssueType").value;
         const desc = document.getElementById("triageMessage").value.trim();
+
+        if (!sender) {
+          showErr("Please select a resident name from the dropdown.");
+          return;
+        }
 
         const r = await fetch("/triage", {
           method: "POST",
@@ -1175,7 +1373,9 @@ MOBILE_UI = """<!doctype html>
             sender,
             channel: "app",
             wing,
+            floor,
             flat,
+            role,
             issue_type: issueType,
             message: desc
           })
@@ -1183,6 +1383,14 @@ MOBILE_UI = """<!doctype html>
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Triage request failed");
         appState = data.state || data;
+
+        const hasBackendInc = (appState.master_incidents || []).some(
+          i => (i.status || "active") === "active" && String(i.wing || "") === String(wing)
+        );
+        if (!hasBackendInc) {
+          ensureAutoCluster(wing, issueType, desc, flat);
+        }
+
         closeModal("triageModal");
         renderAll();
       } catch (err) {
@@ -1206,6 +1414,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
