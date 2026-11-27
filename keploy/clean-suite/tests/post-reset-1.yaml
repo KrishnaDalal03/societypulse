@@ -45,6 +45,7 @@ spec:
   assertions:
     noise:
       header.Date: []
+      header.Server: []
   created: 1795799792
   app_port: 5000
 curl: |
