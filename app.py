@@ -93,7 +93,7 @@ def reset_state():
     return jsonify({"status": "reset", "state": _load_all_state()}), 200
 
 MOBILE_UI = """<!doctype html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -207,7 +207,8 @@ MOBILE_UI = """<!doctype html>
       gap: 12px;
     }
 
-    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .brand { display: flex; align-items: center; gap: 10px; }
     .brand-badge {
       width: 38px; height: 38px; border-radius: 10px;
       background: var(--primary-container); color: var(--primary);
@@ -240,7 +241,7 @@ MOBILE_UI = """<!doctype html>
 
     .btn-primary { background: var(--primary); color: var(--on-primary); }
     .btn-surface { background: var(--surface-high); color: var(--on-surface); border: 1px solid var(--outline-variant); }
-    .btn-admin-on { background: var(--success-container); color: var(--on-success-container); border: 1px solid var(--success); }
+    .btn-success { background: var(--success-container); color: var(--on-success-container); border: 1px solid var(--success); }
     .btn-danger { background: var(--error-container); color: var(--on-error-container); border: 1px solid rgba(255,180,171,0.25); }
     .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
 
@@ -316,14 +317,19 @@ MOBILE_UI = """<!doctype html>
       border-radius: 12px;
       padding: 14px;
       margin-bottom: 10px;
-      cursor: pointer;
       transition: border-color 0.15s ease, background 0.15s ease;
     }
-    .inc-card:hover { border-color: var(--primary); background: var(--surface-high); }
+    .inc-card:hover { border-color: var(--primary); }
     .inc-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
-    .inc-title { font-size: 15px; font-weight: 600; }
+    .inc-title { font-size: 15px; font-weight: 600; cursor: pointer; }
     .inc-summary { font-size: 13px; color: var(--on-surface-variant); margin-top: 6px; }
+    .inc-reply-box {
+      margin-top: 8px; padding: 8px 10px; border-radius: 8px;
+      background: var(--surface); border-left: 3px solid var(--primary);
+      font-size: 12px; color: var(--on-surface);
+    }
     .inc-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+    .inc-admin-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--outline-variant); }
 
     .chip {
       font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 999px;
@@ -355,6 +361,7 @@ MOBILE_UI = """<!doctype html>
     }
     .item-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 13px; }
     .item-sub { font-size: 12px; color: var(--on-surface-variant); margin-top: 4px; }
+    .item-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 
     .empty {
       text-align: center; padding: 24px 12px;
@@ -382,7 +389,7 @@ MOBILE_UI = """<!doctype html>
       background: var(--surface-low); color: var(--on-surface);
       border: 1px solid var(--outline-variant); border-radius: 10px; padding: 9px 12px;
     }
-    textarea { min-height: 84px; resize: vertical; }
+    textarea { min-height: 80px; resize: vertical; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
 
     .banner-err {
@@ -396,20 +403,22 @@ MOBILE_UI = """<!doctype html>
 <body>
   <header>
     <div class="header-inner">
-      <div class="brand">
-        <div class="brand-badge"><span class="material-symbols-outlined">apartment</span></div>
-        <div>
-          <div class="brand-title" id="societyName">Greenwood Estates</div>
-          <div class="brand-sub">Resident Triage &amp; Incident Command</div>
+      <div class="brand-left">
+        <button type="button" class="btn-surface btn-sm" id="themeBtn" onclick="toggleTheme()" title="Switch Light/Dark Theme">
+          <span class="material-symbols-outlined" id="themeIcon">dark_mode</span>
+          <span id="themeLabel">Dark</span>
+        </button>
+        <div class="brand">
+          <div class="brand-badge"><span class="material-symbols-outlined">apartment</span></div>
+          <div>
+            <div class="brand-title" id="societyName">Greenwood Estates</div>
+            <div class="brand-sub">Resident Triage &amp; Incident Command</div>
+          </div>
         </div>
       </div>
 
       <div class="controls-row">
         <div class="wing-group" id="wingFilter"></div>
-        <button type="button" class="btn-surface" id="themeBtn" onclick="toggleTheme()">
-          <span class="material-symbols-outlined" id="themeIcon">light_mode</span>
-          <span id="themeLabel">Light</span>
-        </button>
         <button type="button" class="btn-surface" id="adminBtn" onclick="handleAdminClick()">
           <span class="material-symbols-outlined">admin_panel_settings</span>
           <span id="adminLabel">Admin Login</span>
@@ -420,9 +429,6 @@ MOBILE_UI = """<!doctype html>
         <button type="button" class="btn-surface" onclick="loadState()">
           <span class="material-symbols-outlined">refresh</span> Sync
         </button>
-        <button type="button" class="btn-surface" onclick="openModal('settingsModal')">
-          <span class="material-symbols-outlined">settings</span> Settings
-        </button>
       </div>
     </div>
   </header>
@@ -431,12 +437,15 @@ MOBILE_UI = """<!doctype html>
     <div class="admin-bar" id="adminBar">
       <div>
         <strong>Admin Mode Active</strong>
-        <span class="item-sub" style="margin-left:8px;">Add wings to filter incidents, tickets, and residents.</span>
+        <span class="item-sub" style="margin-left:8px;">Add wings, resolve issues, reply, or merge tickets/incidents.</span>
       </div>
       <div class="admin-wing-form">
-        <input id="newWingInput" placeholder="New wing (e.g. D or Tower 2)" />
+        <input id="newWingInput" placeholder="New wing (e.g. A, E)" />
         <button type="button" class="btn-primary btn-sm" onclick="addWing()">
           <span class="material-symbols-outlined">add</span> Add Wing
+        </button>
+        <button type="button" class="btn-danger btn-sm" onclick="resetState()">
+          <span class="material-symbols-outlined">restart_alt</span> Reset Demo
         </button>
         <button type="button" class="btn-surface btn-sm" onclick="logoutAdmin()">Logout</button>
       </div>
@@ -534,7 +543,6 @@ MOBILE_UI = """<!doctype html>
       <form id="triageForm">
         <label>Your Name</label>
         <input id="triageSender" placeholder="e.g., Aarav Sharma" required />
-
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div>
             <label>Wing</label>
@@ -545,7 +553,6 @@ MOBILE_UI = """<!doctype html>
             <input id="triageFlat" placeholder="e.g., 402" required />
           </div>
         </div>
-
         <label>Select Issue</label>
         <select id="triageIssueType">
           <option value="Water Supply">Water Supply</option>
@@ -555,10 +562,8 @@ MOBILE_UI = """<!doctype html>
           <option value="Parking / Common Area">Parking / Common Area</option>
           <option value="Other">Other</option>
         </select>
-
         <label>Description</label>
         <textarea id="triageMessage" placeholder="Describe the issue clearly..." required></textarea>
-
         <div class="modal-actions">
           <button type="button" class="btn-surface" onclick="closeModal('triageModal')">Cancel</button>
           <button type="submit" class="btn-primary" id="triageSubmitBtn">Submit Report</button>
@@ -567,7 +572,7 @@ MOBILE_UI = """<!doctype html>
     </div>
   </div>
 
-  <!-- Incident Detail Modal -->
+  <!-- Incident Detail / Admin Reply / Merge Modal -->
   <div class="modal-backdrop" id="detailModal">
     <div class="modal">
       <div class="modal-head">
@@ -577,45 +582,56 @@ MOBILE_UI = """<!doctype html>
         </button>
       </div>
       <div id="detailBody"></div>
+
       <label>Incident Status</label>
       <select id="detailStatus">
         <option value="active">active</option>
         <option value="resolved">resolved</option>
       </select>
+
+      <label>Admin Reply / Resolution Note</label>
+      <textarea id="detailReply" placeholder="Write a reply or update for residents..."></textarea>
+
       <label>Vendor Status</label>
       <input id="detailVendor" placeholder="e.g., Plumber dispatched" />
-      <label>Vendor Tone</label>
-      <select id="detailTone">
-        <option value="info">info</option>
-        <option value="warning">warning</option>
-        <option value="success">success</option>
-      </select>
+
+      <div id="mergeIncidentSection" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--outline-variant);">
+        <label>Merge This Incident Into Existing Incident</label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="mergeTargetSelect" style="flex:1;min-width:180px;"></select>
+          <button type="button" class="btn-surface btn-sm" onclick="mergeCurrentIncident()">
+            <span class="material-symbols-outlined">call_merge</span> Merge Into Target
+          </button>
+        </div>
+      </div>
+
       <div class="modal-actions">
+        <button type="button" class="btn-success" onclick="quickResolveModal()">
+          <span class="material-symbols-outlined">check_circle</span> Mark Resolved
+        </button>
         <button type="button" class="btn-surface" onclick="closeModal('detailModal')">Close</button>
         <button type="button" class="btn-primary" onclick="saveIncident()">Save Changes</button>
       </div>
     </div>
   </div>
 
-  <!-- Settings Modal -->
-  <div class="modal-backdrop" id="settingsModal">
+  <!-- Merge Ticket Modal -->
+  <div class="modal-backdrop" id="mergeTicketModal">
     <div class="modal">
       <div class="modal-head">
-        <div class="modal-title">Console Settings</div>
-        <button type="button" class="btn-surface btn-sm" onclick="closeModal('settingsModal')">
+        <div class="modal-title">Merge Ticket Into Incident</div>
+        <button type="button" class="btn-surface btn-sm" onclick="closeModal('mergeTicketModal')">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
-      <label>Backend Base URL (leave empty for same origin)</label>
-      <input id="apiBaseInput" placeholder="e.g., https://societypulse.onrender.com" />
-      <div class="modal-actions" style="justify-content:space-between;">
-        <button type="button" class="btn-danger" onclick="resetState()">
-          <span class="material-symbols-outlined">restart_alt</span> Reset Demo State
-        </button>
-        <div style="display:flex;gap:8px;">
-          <button type="button" class="btn-surface" onclick="closeModal('settingsModal')">Cancel</button>
-          <button type="button" class="btn-primary" onclick="saveSettings()">Apply</button>
-        </div>
+      <div id="mergeTicketInfo" class="item-row"></div>
+      <label>Select Target Master Incident</label>
+      <select id="ticketTargetIncident"></select>
+      <label>Or Create New Master Incident Title</label>
+      <input id="newIncidentTitleForTicket" placeholder="e.g., Wing B Water Pressure Issue" />
+      <div class="modal-actions">
+        <button type="button" class="btn-surface" onclick="closeModal('mergeTicketModal')">Cancel</button>
+        <button type="button" class="btn-primary" onclick="confirmMergeTicket()">Merge Ticket</button>
       </div>
     </div>
   </div>
@@ -625,14 +641,17 @@ MOBILE_UI = """<!doctype html>
     let appState = null;
     let selectedWing = "all";
     let customWings = JSON.parse(localStorage.getItem("sp_custom_wings") || "[]");
+    let adminReplies = JSON.parse(localStorage.getItem("sp_admin_replies") || "{}");
+    let mergedRecords = JSON.parse(localStorage.getItem("sp_merged_records") || '{"merged_incident_ids":[],"merged_ticket_ids":[]}');
     let isAdmin = localStorage.getItem("sp_is_admin") === "1";
-    let apiBase = (localStorage.getItem("sp_api_base") || "").replace(/\/+$/, "");
     let showResolved = false;
     let activeTab = "logs";
     let editingIncidentId = null;
+    let mergingTicketId = null;
 
-    function apiUrl(path) {
-      return (apiBase || "") + path;
+    function persistMeta() {
+      localStorage.setItem("sp_admin_replies", JSON.stringify(adminReplies));
+      localStorage.setItem("sp_merged_records", JSON.stringify(mergedRecords));
     }
 
     function applyTheme(theme) {
@@ -644,7 +663,7 @@ MOBILE_UI = """<!doctype html>
     }
 
     function toggleTheme() {
-      const cur = document.documentElement.getAttribute("data-theme") || "dark";
+      const cur = document.documentElement.getAttribute("data-theme") || "light";
       applyTheme(cur === "dark" ? "light" : "dark");
     }
 
@@ -653,7 +672,7 @@ MOBILE_UI = """<!doctype html>
       const label = document.getElementById("adminLabel");
       const bar = document.getElementById("adminBar");
       if (isAdmin) {
-        btn.className = "btn-admin-on";
+        btn.className = "btn-success";
         label.textContent = "Admin Active";
         bar.classList.add("show");
       } else {
@@ -661,6 +680,7 @@ MOBILE_UI = """<!doctype html>
         label.textContent = "Admin Login";
         bar.classList.remove("show");
       }
+      renderAll();
     }
 
     function handleAdminClick() {
@@ -708,32 +728,16 @@ MOBILE_UI = """<!doctype html>
       document.getElementById("errBanner").classList.remove("show");
     }
 
-    function openModal(id) {
-      if (id === "settingsModal") {
-        document.getElementById("apiBaseInput").value = apiBase;
-      }
-      document.getElementById(id).classList.add("open");
-    }
+    function openModal(id) { document.getElementById(id).classList.add("open"); }
     function closeModal(id) { document.getElementById(id).classList.remove("open"); }
-
-    function saveSettings() {
-      apiBase = document.getElementById("apiBaseInput").value.trim().replace(/\/+$/, "");
-      if (apiBase) localStorage.setItem("sp_api_base", apiBase);
-      else localStorage.removeItem("sp_api_base");
-      closeModal("settingsModal");
-      loadState();
-    }
 
     function populateTriageWings(preferredWing = "") {
       const sel = document.getElementById("triageWing");
       const wings = getWings(appState || {}).filter(w => w !== "all");
       const list = wings.length ? wings : ["A", "B", "C"];
       sel.innerHTML = list.map(w => `<option value="${esc(w)}">Wing ${esc(w)}</option>`).join("");
-      if (preferredWing && list.includes(preferredWing)) {
-        sel.value = preferredWing;
-      } else if (selectedWing !== "all" && list.includes(selectedWing)) {
-        sel.value = selectedWing;
-      }
+      if (preferredWing && list.includes(preferredWing)) sel.value = preferredWing;
+      else if (selectedWing !== "all" && list.includes(selectedWing)) sel.value = selectedWing;
     }
 
     function openTriage(prefillSender = "", prefillWing = "", prefillFlat = "") {
@@ -769,6 +773,14 @@ MOBILE_UI = """<!doctype html>
       return String(item.wing || "") === selectedWing;
     }
 
+    function getIncidents() {
+      return (appState?.master_incidents || []).filter(i => !mergedRecords.merged_incident_ids.includes(i.id || i.incident_id));
+    }
+
+    function getTickets() {
+      return (appState?.tickets || []).filter(t => !mergedRecords.merged_ticket_ids.includes(t.id || t.ticket_id));
+    }
+
     function renderWings() {
       const wings = getWings(appState || {});
       document.getElementById("wingFilter").innerHTML = wings.map(w => `
@@ -785,10 +797,10 @@ MOBILE_UI = """<!doctype html>
 
     function renderStats() {
       const st = appState || {};
-      const activeInc = (st.master_incidents || []).filter(i => (i.status || "active") === "active" && matchesWing(i));
-      const openTkts = (st.tickets || []).filter(t => (t.status || "open") !== "resolved" && matchesWing(t));
+      const activeInc = getIncidents().filter(i => (i.status || "active") === "active" && matchesWing(i));
+      const openTkts = getTickets().filter(t => (t.status || "open") !== "resolved" && matchesWing(t));
       const logs = (st.execution_logs || []).filter(l => matchesWing(l));
-      const suppressed = logs.filter(l => l.action === "duplicate_suppressed" || l.status === "duplicate_suppressed").length;
+      const suppressed = logs.filter(l => l.action === "duplicate_suppressed" || l.status === "duplicate_suppressed").length + mergedRecords.merged_ticket_ids.length + mergedRecords.merged_incident_ids.length;
       const slaUrgent = activeInc.filter(i => {
         const sev = String(i.severity || "").toUpperCase();
         const rem = i.sla_minutes_remaining;
@@ -809,35 +821,42 @@ MOBILE_UI = """<!doctype html>
     }
 
     function renderIncidents() {
-      const allInc = (appState?.master_incidents || []).filter(matchesWing);
+      const allInc = getIncidents().filter(matchesWing);
       const resolvedCnt = allInc.filter(i => i.status === "resolved").length;
-      const btn = document.getElementById("resolvedToggleBtn");
-      btn.textContent = showResolved ? `Hide Resolved (${resolvedCnt})` : `Show Resolved (${resolvedCnt})`;
+      document.getElementById("resolvedToggleBtn").textContent = showResolved ? `Hide Resolved (${resolvedCnt})` : `Show Resolved (${resolvedCnt})`;
 
       const list = allInc.filter(i => showResolved ? true : (i.status || "active") === "active");
       const container = document.getElementById("incidentsList");
 
       if (!list.length) {
-        container.innerHTML = `<div class="empty">No master incidents match the current filter.</div>`;
+        container.innerHTML = `<div class="empty">No master incidents yet. Sign in as Admin to merge tickets into an incident or create one, or submit a triage report.</div>`;
         return;
       }
 
       container.innerHTML = list.map(inc => {
         const id = inc.id || inc.incident_id || "";
         const flats = Array.isArray(inc.affected_flats) ? inc.affected_flats.join(", ") : "";
+        const reply = adminReplies[id] || inc.admin_reply || "";
         return `
-          <div class="inc-card" onclick="openDetail('${esc(id)}')">
-            <div class="inc-top">
+          <div class="inc-card">
+            <div class="inc-top" onclick="openDetail('${esc(id)}')">
               <div class="inc-title">${esc(inc.title || id || "Incident")}</div>
               <span class="${sevChipClass(inc.severity)}">${esc(inc.severity || "NORMAL")}</span>
             </div>
-            ${inc.summary ? `<div class="inc-summary">${esc(inc.summary)}</div>` : ""}
-            <div class="inc-meta">
+            ${inc.summary ? `<div class="inc-summary" onclick="openDetail('${esc(id)}')">${esc(inc.summary)}</div>` : ""}
+            ${reply ? `<div class="inc-reply-box"><strong>Admin Reply:</strong> ${esc(reply)}</div>` : ""}
+            <div class="inc-meta" onclick="openDetail('${esc(id)}')">
               <span class="chip chip-info">${esc(inc.status || "active")}</span>
               ${inc.wing ? `<span class="chip">Wing ${esc(inc.wing)}</span>` : ""}
               ${flats ? `<span class="chip mono">Flats: ${esc(flats)}</span>` : ""}
               ${inc.vendor_status ? `<span class="chip">${esc(inc.vendor_status)}</span>` : ""}
             </div>
+            ${isAdmin ? `
+              <div class="inc-admin-actions">
+                ${(inc.status || "active") !== "resolved" ? `<button type="button" class="btn-success btn-sm" onclick="quickResolveIncident('${esc(id)}')"><span class="material-symbols-outlined">check_circle</span> Resolve</button>` : ""}
+                <button type="button" class="btn-surface btn-sm" onclick="openDetail('${esc(id)}')"><span class="material-symbols-outlined">reply</span> Reply / Merge</button>
+              </div>
+            ` : ""}
           </div>
         `;
       }).join("");
@@ -869,22 +888,33 @@ MOBILE_UI = """<!doctype html>
       }
 
       if (activeTab === "tickets") {
-        const tickets = (st.tickets || []).filter(matchesWing).slice().reverse();
+        const tickets = getTickets().filter(matchesWing).slice().reverse();
         if (!tickets.length) {
-          box.innerHTML = `<div class="empty">No tickets recorded yet.</div>`;
+          box.innerHTML = `<div class="empty">No open tickets.</div>`;
           return;
         }
-        box.innerHTML = tickets.map(t => `
-          <div class="item-row">
-            <div class="item-head">
-              <span>${esc(t.summary || t.message || t.id || t.ticket_id || "Ticket")}</span>
-              <span class="chip">${esc(t.status || "open")}</span>
+        box.innerHTML = tickets.map(t => {
+          const tid = t.id || t.ticket_id || "";
+          const reply = adminReplies[tid] || "";
+          return `
+            <div class="item-row">
+              <div class="item-head">
+                <span>${esc(t.summary || t.message || tid || "Ticket")}</span>
+                <span class="chip">${esc(t.status || "open")}</span>
+              </div>
+              <div class="item-sub">
+                ${t.wing ? `Wing ${esc(t.wing)} · ` : ""}${t.sender ? `From ${esc(t.sender)}` : ""}
+              </div>
+              ${reply ? `<div class="inc-reply-box"><strong>Admin Reply:</strong> ${esc(reply)}</div>` : ""}
+              ${isAdmin ? `
+                <div class="item-actions">
+                  <button type="button" class="btn-surface btn-sm" onclick="openMergeTicket('${esc(tid)}')"><span class="material-symbols-outlined">call_merge</span> Merge to Incident</button>
+                  <button type="button" class="btn-surface btn-sm" onclick="replyToTicket('${esc(tid)}')"><span class="material-symbols-outlined">reply</span> Reply</button>
+                </div>
+              ` : ""}
             </div>
-            <div class="item-sub">
-              ${t.wing ? `Wing ${esc(t.wing)} · ` : ""}${t.sender ? `From ${esc(t.sender)}` : ""}
-            </div>
-          </div>
-        `).join("");
+          `;
+        }).join("");
         return;
       }
 
@@ -908,43 +938,165 @@ MOBILE_UI = """<!doctype html>
     }
 
     function openDetail(id) {
-      const inc = (appState?.master_incidents || []).find(x => (x.id || x.incident_id) === id);
+      const inc = getIncidents().find(x => (x.id || x.incident_id) === id);
       if (!inc) return;
       editingIncidentId = id;
       document.getElementById("detailTitle").textContent = inc.title || id;
       document.getElementById("detailStatus").value = inc.status || "active";
+      document.getElementById("detailReply").value = adminReplies[id] || inc.admin_reply || "";
       document.getElementById("detailVendor").value = inc.vendor_status || "";
-      document.getElementById("detailTone").value = inc.vendor_tone || "info";
 
-      const relatedTickets = (appState?.tickets || []).filter(t => (t.master_incident_id || t.incident_id) === id);
+      const others = getIncidents().filter(x => (x.id || x.incident_id) !== id);
+      const mergeSel = document.getElementById("mergeTargetSelect");
+      const mergeSec = document.getElementById("mergeIncidentSection");
+      if (isAdmin && others.length) {
+        mergeSec.style.display = "block";
+        mergeSel.innerHTML = others.map(o => `<option value="${esc(o.id || o.incident_id)}">${esc(o.title || o.id || o.incident_id)}</option>`).join("");
+      } else {
+        mergeSec.style.display = "none";
+      }
+
       document.getElementById("detailBody").innerHTML = `
         <div class="item-row">
           <div class="item-sub mono">ID: ${esc(id)}</div>
           <div class="item-sub">Severity: <strong>${esc(inc.severity || "NORMAL")}</strong> · Wing: <strong>${esc(inc.wing || "-")}</strong></div>
           ${inc.summary ? `<div class="item-sub" style="margin-top:8px;">${esc(inc.summary)}</div>` : ""}
-          <div class="item-sub" style="margin-top:8px;">Linked Tickets: <strong>${relatedTickets.length}</strong></div>
         </div>
       `;
       openModal("detailModal");
     }
 
+    async function patchIncidentBackend(id, payload) {
+      const r = await fetch(`/incidents/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await r.json();
+      if (!r.ok) throw new Error(data.error || "Failed to update incident");
+      appState = data.state || data;
+    }
+
+    async function quickResolveIncident(id) {
+      if (!isAdmin) return;
+      clearErr();
+      try {
+        await patchIncidentBackend(id, { status: "resolved" });
+        renderAll();
+      } catch (e) {
+        showErr(e.message);
+      }
+    }
+
+    async function quickResolveModal() {
+      if (!editingIncidentId) return;
+      document.getElementById("detailStatus").value = "resolved";
+      await saveIncident();
+    }
+
     async function saveIncident() {
       if (!editingIncidentId) return;
       clearErr();
+      const replyVal = document.getElementById("detailReply").value.trim();
+      adminReplies[editingIncidentId] = replyVal;
+      persistMeta();
       try {
-        const r = await fetch(apiUrl(`/incidents/${encodeURIComponent(editingIncidentId)}`), {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            status: document.getElementById("detailStatus").value,
-            vendor_status: document.getElementById("detailVendor").value,
-            vendor_tone: document.getElementById("detailTone").value
-          })
+        await patchIncidentBackend(editingIncidentId, {
+          status: document.getElementById("detailStatus").value,
+          vendor_status: document.getElementById("detailVendor").value,
+          admin_reply: replyVal
         });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data.error || "Failed to update incident");
-        appState = data.state || data;
         closeModal("detailModal");
+        renderAll();
+      } catch (e) {
+        showErr(e.message);
+      }
+    }
+
+    async function mergeCurrentIncident() {
+      if (!isAdmin || !editingIncidentId) return;
+      const targetId = document.getElementById("mergeTargetSelect").value;
+      if (!targetId || targetId === editingIncidentId) return;
+      clearErr();
+      const src = getIncidents().find(x => (x.id || x.incident_id) === editingIncidentId);
+      const tgt = getIncidents().find(x => (x.id || x.incident_id) === targetId);
+      const combinedFlats = Array.from(new Set([...(tgt?.affected_flats || []), ...(src?.affected_flats || [])]));
+      const combinedSummary = [tgt?.summary, src?.summary ? `Merged (${src.title || editingIncidentId}): ${src.summary}` : ""].filter(Boolean).join(" | ");
+      try {
+        await patchIncidentBackend(targetId, {
+          affected_flats: combinedFlats,
+          summary: combinedSummary
+        });
+        if (!mergedRecords.merged_incident_ids.includes(editingIncidentId)) {
+          mergedRecords.merged_incident_ids.push(editingIncidentId);
+          persistMeta();
+        }
+        closeModal("detailModal");
+        renderAll();
+      } catch (e) {
+        showErr(e.message);
+      }
+    }
+
+    function replyToTicket(tid) {
+      if (!isAdmin) return;
+      const current = adminReplies[tid] || "";
+      const ans = prompt("Enter admin reply for ticket " + tid + ":", current);
+      if (ans === null) return;
+      adminReplies[tid] = ans.trim();
+      persistMeta();
+      renderLedger();
+    }
+
+    function openMergeTicket(tid) {
+      if (!isAdmin) return;
+      const tkt = getTickets().find(x => (x.id || x.ticket_id) === tid);
+      if (!tkt) return;
+      mergingTicketId = tid;
+      document.getElementById("mergeTicketInfo").innerHTML = `
+        <div class="item-head">${esc(tkt.summary || tkt.message || tid)}</div>
+        <div class="item-sub">Ticket ID: <span class="mono">${esc(tid)}</span> · Wing: ${esc(tkt.wing || "-")} · From: ${esc(tkt.sender || "-")}</div>
+      `;
+      const sel = document.getElementById("ticketTargetIncident");
+      const incs = getIncidents();
+      sel.innerHTML = incs.length
+        ? incs.map(i => `<option value="${esc(i.id || i.incident_id)}">${esc(i.title || i.id || i.incident_id)} (${esc(i.status || "active")})</option>`).join("")
+        : `<option value="">No existing master incident — enter a new title below</option>`;
+      document.getElementById("newIncidentTitleForTicket").value = tkt.wing ? `Wing ${tkt.wing} — ${tkt.summary || tkt.message || "Consolidated Issue"}` : (tkt.summary || tkt.message || "Consolidated Issue");
+      openModal("mergeTicketModal");
+    }
+
+    async function confirmMergeTicket() {
+      if (!isAdmin || !mergingTicketId) return;
+      clearErr();
+      const tkt = getTickets().find(x => (x.id || x.ticket_id) === mergingTicketId);
+      const targetId = document.getElementById("ticketTargetIncident").value;
+      const newTitle = document.getElementById("newIncidentTitleForTicket").value.trim();
+
+      try {
+        if (targetId) {
+          const tgt = getIncidents().find(x => (x.id || x.incident_id) === targetId);
+          const flats = Array.from(new Set([...(tgt?.affected_flats || []), ...(tkt?.flat ? [String(tkt.flat)] : [])]));
+          const note = tkt?.summary || tkt?.message || mergingTicketId;
+          const summary = [tgt?.summary, `Merged ticket ${mergingTicketId}: ${note}`].filter(Boolean).join(" | ");
+          await patchIncidentBackend(targetId, { affected_flats: flats, summary });
+        } else if (newTitle && appState) {
+          appState.master_incidents = appState.master_incidents || [];
+          appState.master_incidents.push({
+            id: "inc_" + Date.now().toString().slice(-5),
+            title: newTitle,
+            status: "active",
+            severity: "MEDIUM",
+            wing: tkt?.wing || "",
+            affected_flats: tkt?.flat ? [String(tkt.flat)] : [],
+            summary: tkt?.summary || tkt?.message || ""
+          });
+        }
+        if (!mergedRecords.merged_ticket_ids.includes(mergingTicketId)) {
+          mergedRecords.merged_ticket_ids.push(mergingTicketId);
+          persistMeta();
+        }
+        closeModal("mergeTicketModal");
         renderAll();
       } catch (e) {
         showErr(e.message);
@@ -964,7 +1116,7 @@ MOBILE_UI = """<!doctype html>
     async function loadState() {
       clearErr();
       try {
-        const r = await fetch(apiUrl("/state"));
+        const r = await fetch("/state");
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Failed to fetch state");
         appState = data.state || data;
@@ -977,11 +1129,13 @@ MOBILE_UI = """<!doctype html>
     async function resetState() {
       clearErr();
       try {
-        const r = await fetch(apiUrl("/reset"), { method: "POST" });
+        const r = await fetch("/reset", { method: "POST" });
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Failed to reset state");
         appState = data.state || data;
-        closeModal("settingsModal");
+        adminReplies = {};
+        mergedRecords = { merged_incident_ids: [], merged_ticket_ids: [] };
+        persistMeta();
         renderAll();
       } catch (e) {
         showErr(e.message);
@@ -1014,7 +1168,7 @@ MOBILE_UI = """<!doctype html>
         const issueType = document.getElementById("triageIssueType").value;
         const desc = document.getElementById("triageMessage").value.trim();
 
-        const r = await fetch(apiUrl("/triage"), {
+        const r = await fetch("/triage", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1038,7 +1192,7 @@ MOBILE_UI = """<!doctype html>
       }
     });
 
-    applyTheme(localStorage.getItem("sp_theme") || "dark");
+    applyTheme(localStorage.getItem("sp_theme") || "light");
     syncAdminUI();
     loadState();
   </script>
@@ -1052,6 +1206,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
