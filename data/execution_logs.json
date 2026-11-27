@@ -1,0 +1,13 @@
+[
+  {
+    "log_id": "log_001",
+    "timestamp": "2026-11-27T17:17:39.080553+00:00",
+    "idempotency_key": "msg_171d551da5ee",
+    "sender": "+919820112233",
+    "status": "clustered_to_incident",
+    "ticket_id": "tkt_001",
+    "master_incident_id": "inc_b_water",
+    "enriched": true,
+    "triage_source": "rule_fallback"
+  }
+]

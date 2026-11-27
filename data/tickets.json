@@ -1,0 +1,31 @@
+[
+  {
+    "ticket_id": "tkt_001",
+    "idempotency_key": "msg_171d551da5ee",
+    "sender": "+919820112233",
+    "wing": "B",
+    "flat": "402",
+    "category": "water",
+    "urgency": "high",
+    "status": "open",
+    "master_incident_id": "inc_b_water",
+    "sla_minutes": 30,
+    "sla_due_at": "2026-11-27T17:47:39.080537+00:00",
+    "enrichment": {
+      "web_context": {
+        "source": "local_context_fallback",
+        "query": "housing society water outage notice protocol wing B",
+        "note": "Check society notice board & water SOP for Wing B."
+      },
+      "vendor_enrichment": {
+        "source": "local_vendor_fallback",
+        "vendor_name": "AquaFlow Civic & Tanker Services",
+        "domain": "aquaflowservices.in",
+        "status": "eligible_for_dispatch"
+      }
+    },
+    "message": "B wing 402 mein subah se paani nahi aa raha",
+    "triage_source": "rule_fallback",
+    "created_at": "2026-11-27T17:17:39.080548+00:00"
+  }
+]

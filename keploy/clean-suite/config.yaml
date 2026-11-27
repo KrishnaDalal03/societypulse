@@ -1,0 +1,9 @@
+preScript: ""
+postScript: ""
+appCommand: ""
+template: {}
+metadata:
+    name: clean-suite
+mockRegistry:
+    mock: aa5f6d003a77dff22a81d15a1911661de6e73dae0fe93fc06d25a55d93315229
+    app: societypulse

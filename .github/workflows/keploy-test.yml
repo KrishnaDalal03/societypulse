@@ -1,0 +1,49 @@
+name: Keploy Regression Tests
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  keploy-test:
+    runs-on: ubuntu-latest
+    env:
+      KEPLOY_API_KEY: ${{ secrets.KEPLOY_API_KEY }}
+      KEPLOY_INVOKER: ci
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Install Keploy
+        run: |
+          keploy_rc=0
+          keploy_sh="$(mktemp)"
+          curl -fsSL https://keploy.io/install.sh -o "$keploy_sh" && bash "$keploy_sh" -isCI || keploy_rc=$?
+          rm -f "$keploy_sh"
+          case "$(uname -s)" in
+            Darwin) PATH="$HOME/.keploy/bin:$PATH"; export PATH ;;
+            Linux)  PATH="$HOME/.keploy/bin:$PATH"; export PATH ;;
+          esac
+          [ "$keploy_rc" -eq 0 ]
+
+      - name: Reset JSON data baseline (BOM-free)
+        run: |
+          mkdir -p data
+          for store in residents tickets master_incidents execution_logs; do
+            printf '[]' > "data/${store}.json"
+          done
+
+      - name: Run Keploy tests
+        run: |
+          keploy test -c "python app.py" --delay 5 --mappings
