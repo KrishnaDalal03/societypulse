@@ -1,6 +1,6 @@
-import json
+﻿import json
 from pathlib import Path
-from flask import Flask, jsonify, make_response, request
+from flask import Flask, jsonify, make_response, render_template_string, request
 from societypulse_stage4 import run_pipeline
 
 app = Flask(__name__)
@@ -92,6 +92,64 @@ def reset_state():
         _save_store(name, [])
     return jsonify({"status": "reset", "state": _load_all_state()}), 200
 
+
+
+MOBILE_UI = """<!doctype html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SocietyPulse</title>
+  <style>
+    body { font-family: sans-serif; margin: 16px; max-width: 700px; }
+    input, textarea, select { width: 100%; margin: 6px 0 12px; padding: 8px; }
+    button { padding: 10px 14px; margin-right: 8px; }
+    pre { background: #111; color: #eee; padding: 12px; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h2>SocietyPulse</h2>
+  <form id="f">
+    <input name="sender" value="Mobile Tester" required />
+    <select name="channel">
+      <option value="whatsapp">whatsapp</option>
+      <option value="app">app</option>
+      <option value="sms">sms</option>
+    </select>
+    <textarea name="message" rows="3" placeholder="Type issue here..." required></textarea>
+    <button type="submit">Send</button>
+    <button type="button" onclick="loadState()">Refresh</button>
+    <button type="button" onclick="resetState()">Reset</button>
+  </form>
+  <pre id="out">Loading...</pre>
+  <script>
+    const out = document.getElementById("out");
+    async function loadState() {
+      const r = await fetch("/state");
+      out.textContent = JSON.stringify(await r.json(), null, 2);
+    }
+    async function resetState() {
+      await fetch("/reset", { method: "POST" });
+      loadState();
+    }
+    document.getElementById("f").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const body = Object.fromEntries(new FormData(e.target).entries());
+      const r = await fetch("/triage", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      out.textContent = JSON.stringify(await r.json(), null, 2);
+    });
+    loadState();
+  </script>
+</body>
+</html>"""
+
+
+@app.get("/")
+def index():
+    return render_template_string(MOBILE_UI), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
