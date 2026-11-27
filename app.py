@@ -369,7 +369,7 @@ MOBILE_UI = """<!doctype html>
     }
     .modal-backdrop.open { display: flex; }
     .modal {
-      width: 100%; max-width: 540px; max-height: 90vh; overflow-y: auto;
+      width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
       background: var(--surface); border: 1px solid var(--outline-variant);
       border-radius: 16px; padding: 20px;
     }
@@ -399,7 +399,7 @@ MOBILE_UI = """<!doctype html>
       <div class="brand">
         <div class="brand-badge"><span class="material-symbols-outlined">apartment</span></div>
         <div>
-          <div class="brand-title" id="societyName">SocietyPulse</div>
+          <div class="brand-title" id="societyName">Greenwood Estates</div>
           <div class="brand-sub">Resident Triage &amp; Incident Command</div>
         </div>
       </div>
@@ -411,7 +411,7 @@ MOBILE_UI = """<!doctype html>
           <span id="themeLabel">Light</span>
         </button>
         <button type="button" class="btn-surface" id="adminBtn" onclick="handleAdminClick()">
-          <span class="material-symbols-outlined" id="adminIcon">admin_panel_settings</span>
+          <span class="material-symbols-outlined">admin_panel_settings</span>
           <span id="adminLabel">Admin Login</span>
         </button>
         <button type="button" class="btn-primary" onclick="openTriage()">
@@ -420,8 +420,8 @@ MOBILE_UI = """<!doctype html>
         <button type="button" class="btn-surface" onclick="loadState()">
           <span class="material-symbols-outlined">refresh</span> Sync
         </button>
-        <button type="button" class="btn-danger" onclick="resetState()">
-          <span class="material-symbols-outlined">restart_alt</span> Reset
+        <button type="button" class="btn-surface" onclick="openModal('settingsModal')">
+          <span class="material-symbols-outlined">settings</span> Settings
         </button>
       </div>
     </div>
@@ -526,14 +526,14 @@ MOBILE_UI = """<!doctype html>
   <div class="modal-backdrop" id="triageModal">
     <div class="modal">
       <div class="modal-head">
-        <div class="modal-title">New Resident Triage</div>
+        <div class="modal-title">Report an Issue</div>
         <button type="button" class="btn-surface btn-sm" onclick="closeModal('triageModal')">
           <span class="material-symbols-outlined">close</span>
         </button>
       </div>
       <form id="triageForm">
         <label>Your Name</label>
-        <input name="sender" id="triageSender" placeholder="e.g., Aarav Sharma" required />
+        <input id="triageSender" placeholder="e.g., Aarav Sharma" required />
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
           <div>
@@ -584,9 +584,38 @@ MOBILE_UI = """<!doctype html>
       </select>
       <label>Vendor Status</label>
       <input id="detailVendor" placeholder="e.g., Plumber dispatched" />
+      <label>Vendor Tone</label>
+      <select id="detailTone">
+        <option value="info">info</option>
+        <option value="warning">warning</option>
+        <option value="success">success</option>
+      </select>
       <div class="modal-actions">
         <button type="button" class="btn-surface" onclick="closeModal('detailModal')">Close</button>
         <button type="button" class="btn-primary" onclick="saveIncident()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">Console Settings</div>
+        <button type="button" class="btn-surface btn-sm" onclick="closeModal('settingsModal')">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <label>Backend Base URL (leave empty for same origin)</label>
+      <input id="apiBaseInput" placeholder="e.g., https://societypulse.onrender.com" />
+      <div class="modal-actions" style="justify-content:space-between;">
+        <button type="button" class="btn-danger" onclick="resetState()">
+          <span class="material-symbols-outlined">restart_alt</span> Reset Demo State
+        </button>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn-surface" onclick="closeModal('settingsModal')">Cancel</button>
+          <button type="button" class="btn-primary" onclick="saveSettings()">Apply</button>
+        </div>
       </div>
     </div>
   </div>
@@ -597,9 +626,14 @@ MOBILE_UI = """<!doctype html>
     let selectedWing = "all";
     let customWings = JSON.parse(localStorage.getItem("sp_custom_wings") || "[]");
     let isAdmin = localStorage.getItem("sp_is_admin") === "1";
+    let apiBase = (localStorage.getItem("sp_api_base") || "").replace(/\/+$/, "");
     let showResolved = false;
     let activeTab = "logs";
     let editingIncidentId = null;
+
+    function apiUrl(path) {
+      return (apiBase || "") + path;
+    }
 
     function applyTheme(theme) {
       document.documentElement.setAttribute("data-theme", theme);
@@ -674,8 +708,21 @@ MOBILE_UI = """<!doctype html>
       document.getElementById("errBanner").classList.remove("show");
     }
 
-    function openModal(id) { document.getElementById(id).classList.add("open"); }
+    function openModal(id) {
+      if (id === "settingsModal") {
+        document.getElementById("apiBaseInput").value = apiBase;
+      }
+      document.getElementById(id).classList.add("open");
+    }
     function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+    function saveSettings() {
+      apiBase = document.getElementById("apiBaseInput").value.trim().replace(/\/+$/, "");
+      if (apiBase) localStorage.setItem("sp_api_base", apiBase);
+      else localStorage.removeItem("sp_api_base");
+      closeModal("settingsModal");
+      loadState();
+    }
 
     function populateTriageWings(preferredWing = "") {
       const sel = document.getElementById("triageWing");
@@ -867,11 +914,15 @@ MOBILE_UI = """<!doctype html>
       document.getElementById("detailTitle").textContent = inc.title || id;
       document.getElementById("detailStatus").value = inc.status || "active";
       document.getElementById("detailVendor").value = inc.vendor_status || "";
+      document.getElementById("detailTone").value = inc.vendor_tone || "info";
+
+      const relatedTickets = (appState?.tickets || []).filter(t => (t.master_incident_id || t.incident_id) === id);
       document.getElementById("detailBody").innerHTML = `
         <div class="item-row">
           <div class="item-sub mono">ID: ${esc(id)}</div>
           <div class="item-sub">Severity: <strong>${esc(inc.severity || "NORMAL")}</strong> · Wing: <strong>${esc(inc.wing || "-")}</strong></div>
           ${inc.summary ? `<div class="item-sub" style="margin-top:8px;">${esc(inc.summary)}</div>` : ""}
+          <div class="item-sub" style="margin-top:8px;">Linked Tickets: <strong>${relatedTickets.length}</strong></div>
         </div>
       `;
       openModal("detailModal");
@@ -881,12 +932,13 @@ MOBILE_UI = """<!doctype html>
       if (!editingIncidentId) return;
       clearErr();
       try {
-        const r = await fetch(`/incidents/${encodeURIComponent(editingIncidentId)}`, {
+        const r = await fetch(apiUrl(`/incidents/${encodeURIComponent(editingIncidentId)}`), {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             status: document.getElementById("detailStatus").value,
-            vendor_status: document.getElementById("detailVendor").value
+            vendor_status: document.getElementById("detailVendor").value,
+            vendor_tone: document.getElementById("detailTone").value
           })
         });
         const data = await r.json();
@@ -912,7 +964,7 @@ MOBILE_UI = """<!doctype html>
     async function loadState() {
       clearErr();
       try {
-        const r = await fetch("/state");
+        const r = await fetch(apiUrl("/state"));
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Failed to fetch state");
         appState = data.state || data;
@@ -925,10 +977,11 @@ MOBILE_UI = """<!doctype html>
     async function resetState() {
       clearErr();
       try {
-        const r = await fetch("/reset", { method: "POST" });
+        const r = await fetch(apiUrl("/reset"), { method: "POST" });
         const data = await r.json();
         if (!r.ok) throw new Error(data.error || "Failed to reset state");
         appState = data.state || data;
+        closeModal("settingsModal");
         renderAll();
       } catch (e) {
         showErr(e.message);
@@ -960,9 +1013,8 @@ MOBILE_UI = """<!doctype html>
         const flat = document.getElementById("triageFlat").value.trim();
         const issueType = document.getElementById("triageIssueType").value;
         const desc = document.getElementById("triageMessage").value.trim();
-        const formattedMsg = `[Wing ${wing}, Flat ${flat}] [${issueType}] ${desc}`;
 
-        const r = await fetch("/triage", {
+        const r = await fetch(apiUrl("/triage"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -971,7 +1023,7 @@ MOBILE_UI = """<!doctype html>
             wing,
             flat,
             issue_type: issueType,
-            message: formattedMsg
+            message: desc
           })
         });
         const data = await r.json();
@@ -1000,6 +1052,7 @@ def index():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
 
