@@ -93,7 +93,7 @@ def reset_state():
     return jsonify({"status": "reset", "state": _load_all_state()}), 200
 
 MOBILE_UI = """<!doctype html>
-<html lang="en" class="dark">
+<html lang="en" data-theme="dark">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -103,15 +103,14 @@ MOBILE_UI = """<!doctype html>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
   <style>
-    :root {
+    :root,
+    [data-theme="dark"] {
       --primary: #89CEFF;
       --on-primary: #00344D;
       --primary-container: #004C6E;
       --on-primary-container: #C9E6FF;
       --secondary: #A5CBE9;
       --tertiary: #FFB86E;
-      --tertiary-container: #492900;
-      --on-tertiary-container: #FFDCBD;
       --error: #FFB4AB;
       --error-container: #690005;
       --on-error-container: #FFDAD6;
@@ -122,28 +121,55 @@ MOBILE_UI = """<!doctype html>
       --warning-container: #452806;
       --on-warning-container: #FDE68A;
       --bg: #0F1418;
-      --surface-lowest: #0A0F13;
+      --header-bg: rgba(15, 20, 24, 0.92);
       --surface-low: #171C20;
       --surface: #1B2024;
       --surface-high: #252B2F;
       --surface-highest: #30353A;
       --on-surface: #DEE3E9;
       --on-surface-variant: #BEC8D2;
-      --outline: #88929B;
       --outline-variant: #2C353D;
-      --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-mono: "DM Mono", monospace;
+      --backdrop: rgba(10, 15, 19, 0.78);
+    }
+
+    [data-theme="light"] {
+      --primary: #006591;
+      --on-primary: #FFFFFF;
+      --primary-container: #C9E6FF;
+      --on-primary-container: #001E2E;
+      --secondary: #2B5B78;
+      --tertiary: #8A4B00;
+      --error: #BA1A1A;
+      --error-container: #FFDAD6;
+      --on-error-container: #410002;
+      --success: #15803D;
+      --success-container: #DCFCE7;
+      --on-success-container: #052E16;
+      --warning: #B45309;
+      --warning-container: #FEF3C7;
+      --on-warning-container: #451A03;
+      --bg: #F4F7FA;
+      --header-bg: rgba(244, 247, 250, 0.92);
+      --surface-low: #EEF2F6;
+      --surface: #FFFFFF;
+      --surface-high: #E2E8F0;
+      --surface-highest: #CBD5E1;
+      --on-surface: #0F172A;
+      --on-surface-variant: #475569;
+      --outline-variant: #CBD5E1;
+      --backdrop: rgba(15, 23, 42, 0.52);
     }
 
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      font-family: var(--font-sans);
+      font-family: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
       font-size: 14px;
       line-height: 20px;
       background: var(--bg);
       color: var(--on-surface);
+      transition: background 0.18s ease, color 0.18s ease;
     }
 
     .material-symbols-outlined {
@@ -159,13 +185,13 @@ MOBILE_UI = """<!doctype html>
       font-size: 18px;
     }
 
-    .mono { font-family: var(--font-mono); }
+    .mono { font-family: "DM Mono", monospace; }
 
     header {
       position: sticky;
       top: 0;
       z-index: 20;
-      background: rgba(15, 20, 24, 0.92);
+      background: var(--header-bg);
       backdrop-filter: blur(10px);
       border-bottom: 1px solid var(--outline-variant);
     }
@@ -206,14 +232,15 @@ MOBILE_UI = """<!doctype html>
     .wing-btn.active { background: var(--primary-container); color: var(--on-primary-container); }
 
     button {
-      font-family: var(--font-sans);
+      font-family: inherit;
       border: 0; border-radius: 10px;
-      padding: 8px 14px; font-size: 13px; font-weight: 600;
+      padding: 8px 13px; font-size: 13px; font-weight: 600;
       cursor: pointer; display: inline-flex; align-items: center; gap: 6px;
     }
 
     .btn-primary { background: var(--primary); color: var(--on-primary); }
     .btn-surface { background: var(--surface-high); color: var(--on-surface); border: 1px solid var(--outline-variant); }
+    .btn-admin-on { background: var(--success-container); color: var(--on-success-container); border: 1px solid var(--success); }
     .btn-danger { background: var(--error-container); color: var(--on-error-container); border: 1px solid rgba(255,180,171,0.25); }
     .btn-sm { padding: 5px 10px; font-size: 12px; border-radius: 8px; }
 
@@ -225,6 +252,21 @@ MOBILE_UI = """<!doctype html>
       flex-direction: column;
       gap: 20px;
     }
+
+    .admin-bar {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--primary);
+      border-radius: 14px;
+      padding: 14px 16px;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .admin-bar.show { display: flex; }
+    .admin-wing-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .admin-wing-form input { width: 170px; margin: 0; }
 
     .stats-grid {
       display: grid;
@@ -322,7 +364,7 @@ MOBILE_UI = """<!doctype html>
 
     .modal-backdrop {
       position: fixed; inset: 0; z-index: 50;
-      background: rgba(10, 15, 19, 0.78);
+      background: var(--backdrop);
       display: none; align-items: center; justify-content: center; padding: 16px;
     }
     .modal-backdrop.open { display: flex; }
@@ -336,7 +378,7 @@ MOBILE_UI = """<!doctype html>
 
     label { display: block; font-size: 12px; color: var(--on-surface-variant); margin: 10px 0 4px; font-weight: 500; }
     input, select, textarea {
-      width: 100%; font-family: var(--font-sans); font-size: 14px;
+      width: 100%; font-family: inherit; font-size: 14px;
       background: var(--surface-low); color: var(--on-surface);
       border: 1px solid var(--outline-variant); border-radius: 10px; padding: 9px 12px;
     }
@@ -364,6 +406,14 @@ MOBILE_UI = """<!doctype html>
 
       <div class="controls-row">
         <div class="wing-group" id="wingFilter"></div>
+        <button type="button" class="btn-surface" id="themeBtn" onclick="toggleTheme()">
+          <span class="material-symbols-outlined" id="themeIcon">light_mode</span>
+          <span id="themeLabel">Light</span>
+        </button>
+        <button type="button" class="btn-surface" id="adminBtn" onclick="handleAdminClick()">
+          <span class="material-symbols-outlined" id="adminIcon">admin_panel_settings</span>
+          <span id="adminLabel">Admin Login</span>
+        </button>
         <button type="button" class="btn-primary" onclick="openTriage()">
           <span class="material-symbols-outlined">add_comment</span> Triage Message
         </button>
@@ -378,6 +428,20 @@ MOBILE_UI = """<!doctype html>
   </header>
 
   <main>
+    <div class="admin-bar" id="adminBar">
+      <div>
+        <strong>Admin Mode Active</strong>
+        <span class="item-sub" style="margin-left:8px;">Add wings to filter incidents, tickets, and residents.</span>
+      </div>
+      <div class="admin-wing-form">
+        <input id="newWingInput" placeholder="New wing (e.g. D or Tower 2)" />
+        <button type="button" class="btn-primary btn-sm" onclick="addWing()">
+          <span class="material-symbols-outlined">add</span> Add Wing
+        </button>
+        <button type="button" class="btn-surface btn-sm" onclick="logoutAdmin()">Logout</button>
+      </div>
+    </div>
+
     <div class="banner-err" id="errBanner">
       <span id="errText"></span>
       <button type="button" class="btn-surface btn-sm" onclick="loadState()">Retry</button>
@@ -435,6 +499,29 @@ MOBILE_UI = """<!doctype html>
     </section>
   </main>
 
+  <!-- Admin Login Modal -->
+  <div class="modal-backdrop" id="adminModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div class="modal-title">Admin Sign In</div>
+        <button type="button" class="btn-surface btn-sm" onclick="closeModal('adminModal')">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form id="adminForm">
+        <label>Admin Username</label>
+        <input id="adminUser" value="admin" required />
+        <label>Passcode</label>
+        <input type="password" id="adminPass" placeholder="Default: admin123" required />
+        <div class="item-sub" style="margin-top:8px;">Demo passcode is <code>admin123</code>.</div>
+        <div class="modal-actions">
+          <button type="button" class="btn-surface" onclick="closeModal('adminModal')">Cancel</button>
+          <button type="submit" class="btn-primary">Sign In</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Triage Modal -->
   <div class="modal-backdrop" id="triageModal">
     <div class="modal">
@@ -488,11 +575,72 @@ MOBILE_UI = """<!doctype html>
   </div>
 
   <script>
+    const ADMIN_PASSCODE = "admin123";
     let appState = null;
     let selectedWing = "all";
+    let customWings = JSON.parse(localStorage.getItem("sp_custom_wings") || "[]");
+    let isAdmin = localStorage.getItem("sp_is_admin") === "1";
     let showResolved = false;
     let activeTab = "logs";
     let editingIncidentId = null;
+
+    function applyTheme(theme) {
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("sp_theme", theme);
+      const isDark = theme === "dark";
+      document.getElementById("themeIcon").textContent = isDark ? "light_mode" : "dark_mode";
+      document.getElementById("themeLabel").textContent = isDark ? "Light" : "Dark";
+    }
+
+    function toggleTheme() {
+      const cur = document.documentElement.getAttribute("data-theme") || "dark";
+      applyTheme(cur === "dark" ? "light" : "dark");
+    }
+
+    function syncAdminUI() {
+      const btn = document.getElementById("adminBtn");
+      const label = document.getElementById("adminLabel");
+      const bar = document.getElementById("adminBar");
+      if (isAdmin) {
+        btn.className = "btn-admin-on";
+        label.textContent = "Admin Active";
+        bar.classList.add("show");
+      } else {
+        btn.className = "btn-surface";
+        label.textContent = "Admin Login";
+        bar.classList.remove("show");
+      }
+    }
+
+    function handleAdminClick() {
+      if (isAdmin) {
+        document.getElementById("adminBar").classList.toggle("show");
+      } else {
+        document.getElementById("adminPass").value = "";
+        openModal("adminModal");
+      }
+    }
+
+    function logoutAdmin() {
+      isAdmin = false;
+      localStorage.removeItem("sp_is_admin");
+      syncAdminUI();
+    }
+
+    function addWing() {
+      if (!isAdmin) return;
+      clearErr();
+      const inp = document.getElementById("newWingInput");
+      const val = inp.value.trim().replace(/^wing\s+/i, "");
+      if (!val) return;
+      if (!customWings.includes(val)) {
+        customWings.push(val);
+        localStorage.setItem("sp_custom_wings", JSON.stringify(customWings));
+      }
+      selectedWing = val;
+      inp.value = "";
+      renderAll();
+    }
 
     function esc(v) {
       return String(v ?? "").replace(/[&<>"']/g, c => ({
@@ -530,16 +678,16 @@ MOBILE_UI = """<!doctype html>
     }
 
     function getWings(st) {
-      const s = new Set(["all"]);
-      for (const x of (st.master_incidents || [])) if (x.wing) s.add(x.wing);
-      for (const x of (st.tickets || [])) if (x.wing) s.add(x.wing);
-      for (const x of (st.residents || [])) if (x.wing) s.add(x.wing);
+      const s = new Set(["all", ...customWings]);
+      for (const x of (st.master_incidents || [])) if (x.wing) s.add(String(x.wing));
+      for (const x of (st.tickets || [])) if (x.wing) s.add(String(x.wing));
+      for (const x of (st.residents || [])) if (x.wing) s.add(String(x.wing));
       return Array.from(s);
     }
 
     function matchesWing(item) {
       if (selectedWing === "all") return true;
-      return (item.wing || "") === selectedWing;
+      return String(item.wing || "") === selectedWing;
     }
 
     function renderWings() {
@@ -755,6 +903,20 @@ MOBILE_UI = """<!doctype html>
       }
     }
 
+    document.getElementById("adminForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      clearErr();
+      const pass = document.getElementById("adminPass").value;
+      if (pass !== ADMIN_PASSCODE) {
+        showErr("Invalid admin passcode. Try admin123.");
+        return;
+      }
+      isAdmin = true;
+      localStorage.setItem("sp_is_admin", "1");
+      closeModal("adminModal");
+      syncAdminUI();
+    });
+
     document.getElementById("triageForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       clearErr();
@@ -782,6 +944,8 @@ MOBILE_UI = """<!doctype html>
       }
     });
 
+    applyTheme(localStorage.getItem("sp_theme") || "dark");
+    syncAdminUI();
     loadState();
   </script>
 </body>
@@ -794,5 +958,6 @@ def index():
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
+
 
 
